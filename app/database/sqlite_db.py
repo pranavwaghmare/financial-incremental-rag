@@ -8,6 +8,7 @@ class ManifestDB:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self.db_path = db_path
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self.conn.execute("PRAGMA journal_mode=WAL;")
         self.create_tables()
 
     def get_cursor(self):
