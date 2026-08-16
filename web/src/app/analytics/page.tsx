@@ -9,6 +9,8 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('indexing');
+  const [benchmarkLoading, setBenchmarkLoading] = useState(false);
+  const [benchmarkResult, setBenchmarkResult] = useState<any>(null);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -33,6 +35,24 @@ export default function AnalyticsPage() {
 
     fetchAnalytics();
   }, []);
+
+  const runBenchmark = async () => {
+    setBenchmarkLoading(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/benchmark`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      const json = await response.json();
+      setBenchmarkResult(json);
+    } catch (err: any) {
+      setBenchmarkResult({ status: 'error', message: err.message || 'Benchmark failed' });
+    } finally {
+      setBenchmarkLoading(false);
+    }
+  };
 
   if (loading) {
     return <div className="animate-fade-in" style={{ padding: '2rem' }}>Loading analytics...</div>;
@@ -79,6 +99,41 @@ export default function AnalyticsPage() {
         <MetricCard title="Total Chunks" value={data.documents.chunks} icon={<Database />} />
         <MetricCard title="Queries" value={data.queries.total_queries} icon={<Activity />} />
       </div>
+
+      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Incremental vs Full Rebuild Benchmark</h2>
+        </div>
+        <button
+          onClick={runBenchmark}
+          disabled={benchmarkLoading}
+          style={{
+            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.75rem',
+            padding: '0.75rem 1.25rem',
+            fontWeight: 600,
+            cursor: benchmarkLoading ? 'not-allowed' : 'pointer',
+            opacity: benchmarkLoading ? 0.7 : 1,
+          }}
+        >
+          {benchmarkLoading ? 'Running benchmark...' : 'Run benchmark'}
+        </button>
+      </div>
+
+      {benchmarkResult && (
+        <div style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem', backgroundColor: benchmarkResult.status === 'ok' ? '#ecfdf5' : '#fef2f2', color: benchmarkResult.status === 'ok' ? '#065f46' : '#991b1b', borderRadius: '0.75rem', border: '1px solid rgba(0,0,0,0.05)' }}>
+          <strong>{benchmarkResult.message || benchmarkResult.status}</strong>
+          {benchmarkResult.status === 'ok' && benchmarkResult.result?.comparison && (
+            <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.25rem' }}>
+              <div>Incremental calls: {benchmarkResult.result.comparison.incremental_embedding_calls}</div>
+              <div>Full rebuild calls: {benchmarkResult.result.comparison.full_rebuild_embedding_calls}</div>
+              <div>Incremental is lower: {benchmarkResult.result.comparison.incremental_less_than_full ? 'Yes' : 'No'}</div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)' }}>

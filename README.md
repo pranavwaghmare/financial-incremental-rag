@@ -66,6 +66,17 @@ The project is split into a Python/FastAPI backend and a Next.js frontend.
    ```
    The frontend will run at `http://localhost:3000`.
 
+## Local Data and Generated Files
+
+This project creates local runtime data such as:
+- ChromaDB storage in `chroma_storage/`
+- SQLite manifests in `manifest_db/`
+- analytics data in `analytics_db/`
+- uploaded PDFs in `documents/`
+- benchmark output in `benchmark_runs/`
+
+These files are generated locally and are intentionally ignored in `.gitignore`.
+
 ## How to Run Tests
 
 The backend uses `pytest` for testing. To run the test suite:
