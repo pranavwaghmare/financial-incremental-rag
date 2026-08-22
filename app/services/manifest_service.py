@@ -3,9 +3,9 @@ from app.database.sqlite_db import ManifestDB
 
 class ManifestService:
 
-    def __init__(self):
+    def __init__(self, db_path: str = "manifest_db/manifest.db"):
 
-        self.db = ManifestDB()
+        self.db = ManifestDB(db_path=db_path)
 
         self.connection = self.db.conn
 

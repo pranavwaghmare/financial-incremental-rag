@@ -165,3 +165,14 @@ def test_benchmark_incremental_vs_standard():
         os.remove(std_test_pdf)
     if os.path.exists(inc_test_pdf):
         os.remove(inc_test_pdf)
+
+
+def test_benchmark_can_run_with_custom_storage_paths(tmp_path):
+    custom_manifest = tmp_path / "benchmark_manifest.db"
+    service = DocumentProcessingService(
+        manifest_db_path=str(custom_manifest),
+        chroma_collection_name="benchmark_collection"
+    )
+
+    assert service.sqlite.db_path == str(custom_manifest)
+    assert service.chroma.collection.name == "benchmark_collection"

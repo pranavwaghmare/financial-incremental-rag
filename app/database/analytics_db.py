@@ -13,6 +13,24 @@ class AnalyticsDB:
 
         self.create_tables()
 
+    def reset(self):
+        try:
+            self.conn.execute("DELETE FROM upload_metrics")
+            self.conn.execute("DELETE FROM query_metrics")
+            self.conn.commit()
+        except Exception:
+            self.conn.execute("DROP TABLE IF EXISTS upload_metrics")
+            self.conn.execute("DROP TABLE IF EXISTS query_metrics")
+            self.conn.commit()
+            self.create_tables()
+
+    def close(self):
+        if hasattr(self.local, "conn"):
+            try:
+                self.local.conn.close()
+            except Exception:
+                pass
+
     @property
     def conn(self):
         if not hasattr(self.local, "conn"):

@@ -17,7 +17,12 @@ from app.utils.splitter import FinancialTextSplitter
 
 class DocumentProcessingService:
 
-    def __init__(self):
+    def __init__(
+        self,
+        manifest_db_path: str = "manifest_db/manifest.db",
+        chroma_path: str = "chroma_storage",
+        chroma_collection_name: str = "financial_documents",
+    ):
 
         self.loader = PDFLoader()
 
@@ -27,15 +32,115 @@ class DocumentProcessingService:
 
         self.embedder = EmbeddingService()
 
-        self.chroma = ChromaDBClient()
+        self.chroma = ChromaDBClient(path=chroma_path, collection_name=chroma_collection_name)
 
-        self.sqlite = ManifestDB()
+        self.sqlite = ManifestDB(db_path=manifest_db_path)
 
-        self.manifest = ManifestService()
+        self.manifest = ManifestService(db_path=manifest_db_path)
 
-        self.incremental = IncrementalService()
+        self.incremental = IncrementalService(chroma_client=self.chroma)
 
         self.analytics = AnalyticsService()
+
+    def process_document_full_rebuild(self, file_path):
+        start_time = time.perf_counter()
+        filename = Path(file_path).name
+
+        pages = self.loader.extract_text(file_path)
+
+        cleaned_pages = [
+            {"page": page["page"], "text": self.cleaner.clean(page["text"])}
+            for page in pages
+        ]
+
+        chunks = self.splitter.split_pages(cleaned_pages)
+
+        embedding_calls = 0
+        for chunk in chunks:
+            embedding = self.embedder.embed_text(chunk["text"])
+            embedding_calls += 1
+
+            chunk_id = f"{filename}_{chunk['chunk_number']}"
+            self.chroma.collection.upsert(
+                ids=[chunk_id],
+                documents=[chunk["text"]],
+                embeddings=[embedding],
+                metadatas=[{
+                    "document_name": filename,
+                    "page": chunk["page"],
+                    "chunk_number": chunk["chunk_number"],
+                }],
+            )
+
+        end_time = time.perf_counter()
+        processing_time = round(end_time - start_time, 3)
+
+        return {
+            "filename": filename,
+            "chunks": len(chunks),
+            "embedding_calls": embedding_calls,
+            "processing_time_seconds": processing_time,
+            "mode": "full_rebuild",
+        }
+
+    def benchmark_against_full_rebuild(self, version_1_path, version_2_path, temp_root=None):
+        from tempfile import TemporaryDirectory
+        import shutil
+
+        if temp_root is not None:
+            temp_dir = Path(temp_root)
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            temp_root_obj = temp_dir
+        else:
+            temp_root_obj = Path(TemporaryDirectory(prefix="financial_rag_benchmark_").name)
+            temp_root_obj.mkdir(parents=True, exist_ok=True)
+
+        v1_copy = temp_root_obj / "v1.pdf"
+        v2_copy = temp_root_obj / "v2.pdf"
+        shutil.copy2(version_1_path, v1_copy)
+        shutil.copy2(version_2_path, v2_copy)
+
+        inc_path = temp_root_obj / "incremental"
+        full_path = temp_root_obj / "full_rebuild"
+        inc_path.mkdir(exist_ok=True)
+        full_path.mkdir(exist_ok=True)
+
+        incremental_service = DocumentProcessingService(
+            manifest_db_path=str(inc_path / "manifest.db"),
+            chroma_path=str(inc_path / "chroma"),
+            chroma_collection_name="incremental_benchmark",
+        )
+
+        full_service = DocumentProcessingService(
+            manifest_db_path=str(full_path / "manifest.db"),
+            chroma_path=str(full_path / "chroma"),
+            chroma_collection_name="full_rebuild_benchmark",
+        )
+
+        incremental_service.process_document(str(v1_copy))
+        incremental_result = incremental_service.process_document(str(v2_copy))
+        full_result = full_service.process_document_full_rebuild(str(v2_copy))
+
+        result = {
+            "incremental": incremental_result,
+            "full_rebuild": full_result,
+            "comparison": {
+                "incremental_embedding_calls": incremental_result.get("embedding_calls", 0),
+                "full_rebuild_embedding_calls": full_result.get("embedding_calls", 0),
+                "incremental_less_than_full": incremental_result.get("embedding_calls", 0) < full_result.get("embedding_calls", 0),
+            },
+            "storage": {
+                "incremental_manifest": str(inc_path / "manifest.db"),
+                "incremental_chroma": str(inc_path / "chroma"),
+                "full_manifest": str(full_path / "manifest.db"),
+                "full_chroma": str(full_path / "chroma"),
+            },
+        }
+
+        if temp_root is None:
+            shutil.rmtree(temp_root_obj, ignore_errors=True)
+
+        return result
 
     def process_document(self, file_path):
         start_time = time.perf_counter()

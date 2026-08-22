@@ -157,6 +157,15 @@ ENV/
 env.bak/
 venv.bak/
 
+# Local runtime data and vector stores
+analytics_db/
+manifest_db/
+chroma_storage/
+documents/
+benchmark_runs/
+*.sqlite3
+*.db
+
 # Spyder project settings
 .spyderproject
 .spyproject

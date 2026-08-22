@@ -4,9 +4,9 @@ from app.services.embedding_service import EmbeddingService
 
 class IncrementalService:
 
-    def __init__(self):
+    def __init__(self, chroma_client=None):
 
-        self.chroma = ChromaDBClient()
+        self.chroma = chroma_client or ChromaDBClient()
 
         self.embedder = EmbeddingService()
 

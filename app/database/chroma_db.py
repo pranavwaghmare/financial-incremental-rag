@@ -8,17 +8,17 @@ _client = None
 _collection = None
 
 
-def initialize_chromadb():
+def initialize_chromadb(chroma_path: str = CHROMA_PATH, collection_name: str = COLLECTION_NAME):
     global _client, _collection
 
-    Path(CHROMA_PATH).mkdir(parents=True, exist_ok=True)
+    Path(chroma_path).mkdir(parents=True, exist_ok=True)
 
-    if _client is None:
-        _client = chromadb.PersistentClient(path=CHROMA_PATH)
+    if _client is None or getattr(_client, "_path", None) != chroma_path or getattr(_collection, "name", None) != collection_name:
+        _client = chromadb.PersistentClient(path=chroma_path)
         _collection = _client.get_or_create_collection(
-            name=COLLECTION_NAME
+            name=collection_name
         )
-        print("ChromaDB Initialized")
+        print(f"ChromaDB Initialized at {chroma_path} ({collection_name})")
 
 
 def get_collection():
@@ -32,8 +32,11 @@ def get_collection():
 
 class ChromaDBClient:
 
-    def __init__(self):
-        self.collection = get_collection()
+    def __init__(self, path: str = CHROMA_PATH, collection_name: str = COLLECTION_NAME):
+        self.path = path
+        self.collection_name = collection_name
+        self.client = chromadb.PersistentClient(path=self.path)
+        self.collection = self.client.get_or_create_collection(name=self.collection_name)
 
     # -----------------------------
     # Bulk insert (Milestone 2)
