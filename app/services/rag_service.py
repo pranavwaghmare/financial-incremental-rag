@@ -7,20 +7,24 @@ from app.services.analytics_service import AnalyticsService
 
 class RAGService:
 
-    def __init__(self):
+    def __init__(
+        self,
+        retriever: RetrievalService = None,
+        groq_service: GroqService = None,
+        analytics_service: AnalyticsService = None,
+    ):
+        self.retriever = retriever or RetrievalService()
+        self.groq = groq_service or GroqService()
+        self.analytics = analytics_service or AnalyticsService()
 
-        self.retriever = RetrievalService()
-        self.groq = GroqService()
-        self.analytics = AnalyticsService()
-
-    def ask(self, question: str):
+    def ask(self, question: str, top_k: int = 5, log_analytics: bool = True):
         start = time.perf_counter()
 
         # Step 1
         # Retrieve relevant chunks
         chunks = self.retriever.retrieve(
             question=question,
-            top_k=5
+            top_k=top_k
         )
 
         # No chunks found
@@ -72,17 +76,13 @@ Content:
         response_time = round(end - start, 3)
 
         # Save query analytics
-        self.analytics.save_query_metrics(
-
-            question=question,
-
-            response_time=response_time,
-
-            document=chunks[0]["document"],
-
-            page=chunks[0]["page"]
-
-        )
+        if log_analytics:
+            self.analytics.save_query_metrics(
+                question=question,
+                response_time=response_time,
+                document=chunks[0]["document"],
+                page=chunks[0]["page"]
+            )
 
         return {
 

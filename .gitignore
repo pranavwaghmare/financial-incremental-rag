@@ -163,6 +163,7 @@ manifest_db/
 chroma_storage/
 documents/
 benchmark_runs/
+data/
 *.sqlite3
 *.db
 

@@ -22,13 +22,15 @@ class DocumentProcessingService:
         manifest_db_path: str = "manifest_db/manifest.db",
         chroma_path: str = "chroma_storage",
         chroma_collection_name: str = "financial_documents",
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200,
     ):
 
         self.loader = PDFLoader()
 
         self.cleaner = TextCleaner()
 
-        self.splitter = FinancialTextSplitter()
+        self.splitter = FinancialTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
         self.embedder = EmbeddingService()
 
@@ -83,7 +85,7 @@ class DocumentProcessingService:
             "mode": "full_rebuild",
         }
 
-    def benchmark_against_full_rebuild(self, version_1_path, version_2_path, temp_root=None):
+    def benchmark_against_full_rebuild(self, version_1_path, version_2_path, temp_root=None, chunk_size=1000, chunk_overlap=200):
         from tempfile import TemporaryDirectory
         import shutil
 
@@ -109,12 +111,16 @@ class DocumentProcessingService:
             manifest_db_path=str(inc_path / "manifest.db"),
             chroma_path=str(inc_path / "chroma"),
             chroma_collection_name="incremental_benchmark",
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
         )
 
         full_service = DocumentProcessingService(
             manifest_db_path=str(full_path / "manifest.db"),
             chroma_path=str(full_path / "chroma"),
             chroma_collection_name="full_rebuild_benchmark",
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
         )
 
         incremental_service.process_document(str(v1_copy))
