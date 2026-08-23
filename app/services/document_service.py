@@ -212,6 +212,9 @@ class DocumentProcessingService:
 
         }
 
+        # The manifest stores chunk hashes keyed by their chunk index, but the
+        # diff must be content-addressable: a chunk is unchanged if its hash value
+        # exists anywhere in the previous version, regardless of index placement.
         # -------------------------
         # Read Manifest
         # -------------------------
@@ -254,54 +257,22 @@ class DocumentProcessingService:
 
         document_id = filename
 
+        # Reset the manifest for this document so index positions reflect the
+        # current document layout, while diffing itself remains content-addressable.
+        self.manifest.delete_document(filename)
+
         for i, chunk in enumerate(chunks):
+            chunk_hash = hashes[i]
+            chunk_id = f"{filename}_{i}"
 
-            chunk_id = f"{filename}_{chunk['chunk_number']}"
-
-            if i in changes["new"]:
-
-                self.manifest.add_chunk(
-
-                    document_name=filename,
-
-                    document_id=document_id,
-
-                    chunk_id=chunk_id,
-
-                    chunk_index=i,
-
-                    page=chunk["page"],
-
-                    chunk_hash=hashes[i],
-
-                    embedding_id=chunk_id
-
-                )
-
-            elif i in changes["modified"]:
-
-                self.manifest.update_chunk(
-
-                    chunk_id,
-
-                    hashes[i],
-
-                    chunk_id
-
-                )
-
-        # -------------------------
-        # Remove Deleted
-        # -------------------------
-
-        for index in changes["deleted"]:
-
-            chunk_id = f"{filename}_{index+1}"
-
-            self.manifest.delete_chunk(
-
-                chunk_id
-
+            self.manifest.add_chunk(
+                document_name=filename,
+                document_id=document_id,
+                chunk_id=chunk_id,
+                chunk_index=i,
+                page=chunk["page"],
+                chunk_hash=chunk_hash,
+                embedding_id=chunk_id,
             )
 
         # -------------------------

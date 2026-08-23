@@ -1,10 +1,13 @@
-from typing import Dict, List
+from typing import Dict
 
 
 class DiffService:
     """
-    Compares chunk hashes between
-    an old document and a new document.
+    Compares chunk hashes between an old document and a new document using
+    content-addressable set membership instead of positional index comparison.
+
+    A chunk is unchanged if its hash value exists anywhere in the previous
+    version, regardless of its current index in the document.
     """
 
     @staticmethod
@@ -13,47 +16,31 @@ class DiffService:
         new_hashes: Dict[int, str]
     ) -> dict:
 
+        old_hash_values = set(old_hashes.values())
+        new_hash_values = set(new_hashes.values())
+
         new_chunks = []
         modified_chunks = []
         deleted_chunks = []
         unchanged_chunks = []
 
-        old_indexes = set(old_hashes.keys())
-        new_indexes = set(new_hashes.keys())
-
-        # Existing chunk indexes
-        common_indexes = old_indexes.intersection(new_indexes)
-
-        for index in common_indexes:
-
-            if old_hashes[index] == new_hashes[index]:
-
+        # A hash is unchanged when it existed anywhere in the previous version.
+        for index, hash_value in new_hashes.items():
+            if hash_value in old_hash_values:
                 unchanged_chunks.append(index)
-
             else:
+                new_chunks.append(index)
 
-                modified_chunks.append(index)
+        # Any old hash that is no longer present in the new document is deleted.
+        for index, hash_value in old_hashes.items():
+            if hash_value not in new_hash_values:
+                deleted_chunks.append(index)
 
-        # New chunk indexes
-
-        for index in new_indexes - old_indexes:
-
-            new_chunks.append(index)
-
-        # Deleted chunk indexes
-
-        for index in old_indexes - new_indexes:
-
-            deleted_chunks.append(index)
-
+        # With pure set-based hashing, a modified chunk is indistinguishable from a
+        # removed hash plus a new hash, so "modified" remains empty by design.
         return {
-
             "new": new_chunks,
-
             "modified": modified_chunks,
-
             "deleted": deleted_chunks,
-
-            "unchanged": unchanged_chunks
-
+            "unchanged": unchanged_chunks,
         }

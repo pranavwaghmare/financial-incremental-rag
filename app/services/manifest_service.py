@@ -129,6 +129,13 @@ class ManifestService:
 
         }
 
+    def delete_document(self, document_name):
+        self.cursor.execute(
+            "DELETE FROM manifest WHERE document_name=?",
+            (document_name,),
+        )
+        self.connection.commit()
+
     def delete_chunk(self, chunk_id):
 
         self.cursor.execute(

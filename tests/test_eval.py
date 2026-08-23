@@ -30,6 +30,36 @@ def create_dummy_pdf(file_path: Path, title: str, paragraphs: list):
     doc.close()
 
 
+def test_content_addressable_incremental_diff_ignores_index_shift(tmp_path):
+    """Adding a new chunk at the top should not flag unchanged downstream chunks as modified just because their indices shifted."""
+    from app.services.document_service import DocumentProcessingService
+
+    same_pdf = tmp_path / "report.pdf"
+    original_chunks = ["Chunk A", "Chunk B", "Chunk C", "Chunk D", "Chunk E"]
+    updated_chunks = ["New Intro Chunk", "Chunk A", "Chunk B", "Chunk C", "Chunk D"]
+
+    create_dummy_pdf(same_pdf, "Finance Report", original_chunks)
+
+    service = DocumentProcessingService(
+        manifest_db_path=str(tmp_path / "manifest.db"),
+        chroma_path=str(tmp_path / "chroma"),
+        chroma_collection_name="test_incremental_hash_diff",
+        chunk_size=200,
+        chunk_overlap=0,
+    )
+
+    first_result = service.process_document(str(same_pdf))
+
+    create_dummy_pdf(same_pdf, "Finance Report", updated_chunks)
+    second_result = service.process_document(str(same_pdf))
+
+    assert first_result["chunks"] == 5
+    assert second_result["chunks"] == 5
+    assert second_result["new_chunks"] == 1
+    assert second_result["deleted_chunks"] == 1
+    assert second_result["unchanged_chunks"] == 4
+
+
 def test_financebench_evidence_page_indexing():
     """Verify that 0-indexed benchmark pages correctly convert to 1-indexed PDF pages."""
     ev = EvidenceItem(
