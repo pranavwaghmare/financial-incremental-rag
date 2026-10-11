@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Database, Gauge, Target, Timer, Trophy } from 'lucide-react';
+import { CheckCircle2, Database, Gauge, Play, Target, Timer, Trophy } from 'lucide-react';
 
 interface MetricSet {
   hit_at_5: number;
@@ -51,6 +51,15 @@ interface BenchmarkResponse {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
+async function fetchLatestBenchmark() {
+  const response = await fetch(`${API_URL}/benchmark/latest`, { cache: 'no-store' });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(errorBody?.detail || 'Benchmark report unavailable');
+  }
+  return await response.json() as BenchmarkResponse;
+}
+
 function percentage(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
@@ -63,15 +72,13 @@ export default function BenchmarkPage() {
   const [data, setData] = useState<BenchmarkResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [runMessage, setRunMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const loadBenchmark = async () => {
       try {
-        const response = await fetch(`${API_URL}/benchmark/latest`, { cache: 'no-store' });
-        if (!response.ok) {
-          throw new Error((await response.json()).detail || 'Benchmark report unavailable');
-        }
-        setData(await response.json() as BenchmarkResponse);
+        setData(await fetchLatestBenchmark());
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Benchmark report unavailable');
       } finally {
@@ -81,6 +88,40 @@ export default function BenchmarkPage() {
 
     loadBenchmark();
   }, []);
+
+  const runBenchmark = async () => {
+    setIsRunning(true);
+    setRunMessage('Running 10 questions across 2 incremental rounds...');
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_URL}/benchmark/run`, { method: 'POST' });
+      const startResult = await response.json();
+      if (!response.ok) {
+        throw new Error(startResult.detail || 'Could not start benchmark');
+      }
+
+      while (true) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        const statusResponse = await fetch(`${API_URL}/benchmark/status`, { cache: 'no-store' });
+        const status = await statusResponse.json();
+
+        if (status.status === 'complete') {
+          if (status.return_code !== 0) {
+            throw new Error('Benchmark finished with an error. Check benchmark_runs/latest_benchmark.log.');
+          }
+          setData(await fetchLatestBenchmark());
+          setRunMessage('Benchmark complete. Results refreshed.');
+          break;
+        }
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Benchmark failed');
+      setRunMessage(null);
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   if (loading) {
     return <div className="animate-fade-in benchmark-empty">Loading benchmark results...</div>;
@@ -97,6 +138,11 @@ export default function BenchmarkPage() {
           <Trophy size={32} />
           <strong>{error || 'No benchmark report available.'}</strong>
           <span>Run incremental_eval.py, then refresh this page.</span>
+          <button className="benchmark-run-button" onClick={runBenchmark} disabled={isRunning}>
+            <Play size={15} />
+            {isRunning ? 'Benchmark running...' : 'Run benchmark'}
+          </button>
+          {runMessage && <span>{runMessage}</span>}
         </div>
       </div>
     );
@@ -117,9 +163,17 @@ export default function BenchmarkPage() {
             <h1 className="page-title">Incremental Benchmark</h1>
             <p className="page-subtitle">Efficiency gains with retrieval quality parity.</p>
           </div>
-          <span className="benchmark-report-name">{data.report_name}</span>
+          <div className="benchmark-header-actions">
+            <span className="benchmark-report-name">{data.report_name}</span>
+            <button className="benchmark-run-button" onClick={runBenchmark} disabled={isRunning}>
+              <Play size={15} />
+              {isRunning ? 'Benchmark running...' : 'Run benchmark'}
+            </button>
+          </div>
         </div>
       </div>
+
+      {runMessage && <div className="benchmark-run-message">{runMessage}</div>}
 
       <div className="benchmark-hero">
         <div>
