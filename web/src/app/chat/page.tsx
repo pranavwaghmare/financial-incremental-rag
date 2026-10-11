@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, BookOpen } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -114,7 +115,9 @@ export default function ChatPage() {
                     boxShadow: 'var(--shadow-sm)',
                     lineHeight: 1.6
                   }}>
-                    {msg.content}
+                    <div className="chat-markdown">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
                   </div>
 
                   {msg.sources && msg.sources.length > 0 && (

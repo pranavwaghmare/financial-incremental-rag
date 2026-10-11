@@ -249,6 +249,42 @@ button {
   font-size: 0.75rem;
 }
 
+.chat-markdown p {
+  margin: 0 0 0.7rem;
+}
+
+.chat-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown strong {
+  font-weight: 700;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  margin: 0.5rem 0 0.75rem 1.25rem;
+  padding: 0;
+}
+
+.chat-markdown li {
+  margin: 0.35rem 0;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3 {
+  margin: 0.8rem 0 0.4rem;
+  font-size: 1rem;
+}
+
+.chat-markdown code {
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  background: rgba(148, 163, 184, 0.2);
+  font-size: 0.9em;
+}
+
 @media (max-width: 720px) {
   .index-metrics {
     grid-template-columns: 1fr;
