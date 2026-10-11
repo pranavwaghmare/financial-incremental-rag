@@ -285,6 +285,34 @@ button {
   font-size: 0.9em;
 }
 
+.chat-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.clear-chat-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: #b91c1c;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.clear-chat-button:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.clear-chat-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .benchmark-title-row,
 .benchmark-section-heading {
   display: flex;
@@ -527,6 +555,10 @@ button {
 
   .benchmark-header-actions {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .chat-page-header {
     flex-direction: column;
   }
 

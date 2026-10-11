@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, BookOpen } from 'lucide-react';
+import { Send, Bot, User, BookOpen, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 const CHAT_STORAGE_KEY = 'findoc-ai-chat-messages';
@@ -56,6 +56,12 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
+  const handleClearChat = () => {
+    window.localStorage.removeItem(CHAT_STORAGE_KEY);
+    setMessages([]);
+    setExpandedSources(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -99,9 +105,21 @@ export default function ChatPage() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 6rem)' }}>
-      <div className="page-header" style={{ marginBottom: '1rem' }}>
-        <h1 className="page-title">💬 Financial AI Assistant</h1>
-        <p className="page-subtitle">Ask questions about your indexed financial reports</p>
+      <div className="page-header chat-page-header" style={{ marginBottom: '1rem' }}>
+        <div>
+          <h1 className="page-title">💬 Financial AI Assistant</h1>
+          <p className="page-subtitle">Ask questions about your indexed financial reports</p>
+        </div>
+        <button
+          className="clear-chat-button"
+          onClick={handleClearChat}
+          disabled={messages.length === 0}
+          title="Clear chat history"
+          aria-label="Clear chat history"
+        >
+          <Trash2 size={16} />
+          Clear chat
+        </button>
       </div>
 
       <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
