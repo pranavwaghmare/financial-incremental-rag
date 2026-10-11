@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FileUp, MessageSquare, BarChart3, Database } from 'lucide-react';
+import { FileUp, MessageSquare, BarChart3, Database, Trophy } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -11,6 +11,7 @@ export default function Sidebar() {
     { name: 'Upload Report', path: '/upload', icon: <FileUp size={20} /> },
     { name: 'Financial Assistant', path: '/chat', icon: <MessageSquare size={20} /> },
     { name: 'Analytics Dashboard', path: '/analytics', icon: <BarChart3 size={20} /> },
+    { name: 'Benchmark Results', path: '/benchmark', icon: <Trophy size={20} /> },
   ];
 
   return (
