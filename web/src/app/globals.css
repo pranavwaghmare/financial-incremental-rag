@@ -134,6 +134,133 @@ button {
   border: 1px solid var(--border-color);
 }
 
+.index-result {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-md);
+}
+
+.index-result-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.index-result-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #166534;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.index-result-header h3 {
+  margin-top: 0.35rem;
+  color: var(--text-main);
+  font-size: 1.05rem;
+}
+
+.index-result-status {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.index-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.index-metric {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.8rem;
+  border: 1px solid #dbeafe;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: var(--primary);
+}
+
+.index-metric strong {
+  color: var(--text-main);
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.index-metric span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.index-metric-success {
+  color: #16a34a;
+}
+
+.index-metric-accent {
+  color: #d97706;
+}
+
+.index-result-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  color: #166534;
+  font-size: 0.9rem;
+}
+
+.index-result-summary span {
+  color: var(--text-muted);
+}
+
+.index-result-details {
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.index-result-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.index-result-details pre {
+  max-height: 14rem;
+  margin-top: 0.6rem;
+  overflow: auto;
+  padding: 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background: #ffffff;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .index-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .index-result-header,
+  .index-result-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }

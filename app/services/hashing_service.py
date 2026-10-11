@@ -40,3 +40,8 @@ class HashingService:
             HashingService.generate_hash(chunk)
             for chunk in chunks
         ]
+
+    @staticmethod
+    def chunk_id(document_name: str, chunk_hash: str) -> str:
+        """Build a stable vector and manifest ID from document and content."""
+        return f"{document_name}_{chunk_hash}"

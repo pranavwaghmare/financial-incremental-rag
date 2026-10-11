@@ -66,7 +66,7 @@ class EvaluationRunner:
         
         if groq_service is not None:
             self.groq_service = groq_service
-        else:
+        elif self.judge_mode in ("llm", "hybrid"):
             try:
                 self.groq_service = GroqService()
             except Exception as e:
@@ -74,6 +74,8 @@ class EvaluationRunner:
                 self.groq_service = None
                 if self.judge_mode in ("llm", "hybrid"):
                     self.judge_mode = "semantic"
+        else:
+            self.groq_service = None
 
         # Evaluator components
         self.answer_evaluator = AnswerEvaluator(

@@ -4,8 +4,22 @@ import { useState, useEffect } from 'react';
 import { BarChart, Bar, PieChart, Pie, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { Layers, Building, Database, Activity } from 'lucide-react';
 
+interface AnalyticsData {
+  documents: { reports: number; companies: number; chunks: number };
+  incremental: {
+    new_chunks: number;
+    modified_chunks: number;
+    deleted_chunks: number;
+    unchanged_chunks: number;
+    embedding_calls: number;
+    embedding_calls_saved: number;
+    average_processing_time: number;
+  };
+  queries: { total_queries: number; average_response_time: number };
+}
+
 export default function AnalyticsPage() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('indexing');
@@ -24,8 +38,8 @@ export default function AnalyticsPage() {
         }
         const jsonData = await response.json();
         setData(jsonData);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Analytics unavailable');
       } finally {
         setLoading(false);
       }
@@ -49,6 +63,10 @@ export default function AnalyticsPage() {
         </div>
       </div>
     );
+  }
+
+  if (!data) {
+    return null;
   }
 
   const incrementalData = [

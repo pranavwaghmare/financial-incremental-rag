@@ -1,12 +1,23 @@
 "use client";
 
 import { useState } from 'react';
-import { UploadCloud, File, FileText } from 'lucide-react';
+import { UploadCloud, File, FileText, CheckCircle2, Database, Zap } from 'lucide-react';
+
+type IndexResult = {
+  filename: string;
+  status: string;
+  chunks: number;
+  unchanged_chunks: number;
+  embedding_calls: number;
+  embedding_calls_saved: number;
+  reused_chunks_percentage: number;
+  [key: string]: unknown;
+};
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<IndexResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,8 +50,8 @@ export default function UploadPage() {
 
       const data = await response.json();
       setResult(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setIsUploading(false);
     }
@@ -130,18 +141,42 @@ export default function UploadPage() {
           )}
 
           {result && (
-            <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-md)' }}>
-              <h3 style={{ color: '#166534', marginBottom: '0.5rem', fontWeight: 600 }}>Document indexed successfully</h3>
-              <pre style={{ 
-                backgroundColor: '#ffffff', 
-                padding: '1rem', 
-                borderRadius: '0.5rem',
-                overflowX: 'auto',
-                fontSize: '0.875rem',
-                border: '1px solid #e2e8f0'
-              }}>
-                {JSON.stringify(result, null, 2)}
-              </pre>
+            <div className="index-result">
+              <div className="index-result-header">
+                <div>
+                  <div className="index-result-kicker"><CheckCircle2 size={16} /> Incremental update complete</div>
+                  <h3>{result.filename}</h3>
+                </div>
+                <span className="index-result-status">{result.status}</span>
+              </div>
+
+              <div className="index-metrics">
+                <div className="index-metric">
+                  <Database size={18} />
+                  <strong>{result.chunks}</strong>
+                  <span>chunks detected</span>
+                </div>
+                <div className="index-metric index-metric-success">
+                  <CheckCircle2 size={18} />
+                  <strong>{result.unchanged_chunks}</strong>
+                  <span>chunks reused</span>
+                </div>
+                <div className="index-metric index-metric-accent">
+                  <Zap size={18} />
+                  <strong>{result.embedding_calls}</strong>
+                  <span>embeddings generated</span>
+                </div>
+              </div>
+
+              <div className="index-result-summary">
+                <strong>{result.reused_chunks_percentage}% of content reused</strong>
+                <span>{result.embedding_calls_saved} embedding call{result.embedding_calls_saved === 1 ? '' : 's'} saved</span>
+              </div>
+
+              <details className="index-result-details">
+                <summary>View processing details</summary>
+                <pre>{JSON.stringify(result, null, 2)}</pre>
+              </details>
             </div>
           )}
         </div>

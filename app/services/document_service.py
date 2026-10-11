@@ -62,7 +62,8 @@ class DocumentProcessingService:
             embedding = self.embedder.embed_text(chunk["text"])
             embedding_calls += 1
 
-            chunk_id = f"{filename}_{chunk['chunk_number']}"
+            chunk_hash = HashingService.generate_hash(chunk["text"])
+            chunk_id = HashingService.chunk_id(filename, chunk_hash)
             self.chroma.collection.upsert(
                 ids=[chunk_id],
                 documents=[chunk["text"]],
@@ -247,7 +248,11 @@ class DocumentProcessingService:
 
             chunks,
 
-            filename
+            filename,
+
+            old_hashes=old_hashes,
+
+            new_hashes=new_hashes
 
         )
 
@@ -263,7 +268,7 @@ class DocumentProcessingService:
 
         for i, chunk in enumerate(chunks):
             chunk_hash = hashes[i]
-            chunk_id = f"{filename}_{i}"
+            chunk_id = HashingService.chunk_id(filename, chunk_hash)
 
             self.manifest.add_chunk(
                 document_name=filename,

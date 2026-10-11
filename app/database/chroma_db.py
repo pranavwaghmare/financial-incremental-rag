@@ -1,6 +1,8 @@
 from pathlib import Path
 import chromadb
 
+from app.services.hashing_service import HashingService
+
 CHROMA_PATH = "chroma_storage"
 COLLECTION_NAME = "financial_documents"
 
@@ -49,7 +51,10 @@ class ChromaDBClient:
 
         for chunk in chunks:
 
-            chunk_id = f"{document_name}_{chunk['chunk_number']}"
+            chunk_id = HashingService.chunk_id(
+                document_name,
+                HashingService.generate_hash(chunk["text"]),
+            )
 
             ids.append(chunk_id)
             documents.append(chunk["text"])
@@ -80,7 +85,7 @@ class ChromaDBClient:
         metadata
     ):
 
-        self.collection.add(
+        self.collection.upsert(
             ids=[chunk_id],
             documents=[text],
             embeddings=[embedding],

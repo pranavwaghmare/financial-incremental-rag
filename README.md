@@ -205,3 +205,29 @@ python incremental_eval.py --rounds 5 --base-fraction 0.7
 
 🚧 MVP Development In Progress
 
+## Recommended Demonstration Flow
+
+The clearest demonstration is to upload the same report twice: first the original
+version, then a revised version with one section inserted or edited.
+
+1. Start the backend and frontend.
+2. Upload the original PDF from the Upload Report screen.
+3. Note the initial embedding count.
+4. Insert or edit one section while keeping the filename unchanged.
+5. Upload the revised PDF.
+6. Show the result panel: unchanged chunks are reused, only changed content is
+   embedded, and the saved embedding count is visible.
+7. Ask a question about both an unchanged section and the edited section to show
+   that retrieval still works after the update.
+
+For the benchmark evidence, run:
+
+```bash
+python incremental_eval.py --n 20 --base-fraction 0.8 --rounds 3 --judge semantic
+```
+
+The generated report compares incremental indexing with a full rebuild using
+embedding calls saved, re-embedding ratio, indexing time, speedup, and retrieval
+quality parity. Chunk IDs are content-addressable, so moving unchanged content
+within a document does not change its vector identity.
+

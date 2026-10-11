@@ -27,9 +27,11 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+if sys.stdout is not None:
     try:
-        sys.stdout.reconfigure(encoding="utf-8")
+        reconfigure = getattr(sys.stdout, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8")
     except Exception:
         pass
 

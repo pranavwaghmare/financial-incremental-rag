@@ -59,6 +59,20 @@ def test_content_addressable_incremental_diff_ignores_index_shift(tmp_path):
     assert second_result["deleted_chunks"] == 1
     assert second_result["unchanged_chunks"] == 4
 
+    current_pages = [
+        {"page": page["page"], "text": service.cleaner.clean(page["text"])}
+        for page in service.loader.extract_text(str(same_pdf))
+    ]
+    current_chunks = service.splitter.split_pages(current_pages)
+    from app.services.hashing_service import HashingService
+
+    expected_ids = {
+        HashingService.chunk_id("report.pdf", HashingService.generate_hash(chunk["text"]))
+        for chunk in current_chunks
+    }
+    stored_ids = set(service.chroma.collection.get()["ids"])
+    assert stored_ids == expected_ids
+
 
 def test_financebench_evidence_page_indexing():
     """Verify that 0-indexed benchmark pages correctly convert to 1-indexed PDF pages."""

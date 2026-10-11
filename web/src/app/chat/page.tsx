@@ -6,7 +6,14 @@ import { Send, Bot, User, BookOpen } from 'lucide-react';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  sources?: any[];
+  sources?: Source[];
+}
+
+interface Source {
+  document: string;
+  page: number | string;
+  distance: number;
+  text: string;
 }
 
 export default function ChatPage() {
@@ -56,7 +63,7 @@ export default function ChatPage() {
           sources: data.sources 
         }
       ]);
-    } catch (error) {
+    } catch {
       setMessages(prev => [
         ...prev, 
         { role: 'assistant', content: 'Sorry, I encountered an error while processing your request.' }
@@ -144,7 +151,7 @@ export default function ChatPage() {
                                 <span>Similarity: {source.distance.toFixed(4)}</span>
                               </div>
                               <div style={{ color: 'var(--text-main)', fontStyle: 'italic', backgroundColor: '#ffffff', padding: '0.75rem', borderRadius: '0.25rem' }}>
-                                "{source.text.substring(0, 400)}..."
+                                &quot;{source.text.substring(0, 400)}...&quot;
                               </div>
                             </div>
                           ))}

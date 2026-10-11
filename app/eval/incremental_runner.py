@@ -72,13 +72,15 @@ class IncrementalEvaluationRunner:
         self.embedder = EmbeddingService()
         if groq_service is not None:
             self.groq_service = groq_service
-        else:
+        elif self.judge_mode in ("llm", "hybrid"):
             try:
                 self.groq_service = GroqService()
             except Exception as e:
                 self.groq_service = None
                 if self.judge_mode in ("llm", "hybrid"):
                     self.judge_mode = "semantic"
+        else:
+            self.groq_service = None
 
         self.answer_evaluator = AnswerEvaluator(
             embedder=self.embedder,
