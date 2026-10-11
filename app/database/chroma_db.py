@@ -48,13 +48,10 @@ class ChromaDBClient:
         ids = []
         documents = []
         metadatas = []
+        hashes = HashingService.generate_hashes([chunk["text"] for chunk in chunks])
+        chunk_ids = HashingService.generate_chunk_ids(document_name, hashes)
 
-        for chunk in chunks:
-
-            chunk_id = HashingService.chunk_id(
-                document_name,
-                HashingService.generate_hash(chunk["text"]),
-            )
+        for chunk, chunk_id in zip(chunks, chunk_ids):
 
             ids.append(chunk_id)
             documents.append(chunk["text"])

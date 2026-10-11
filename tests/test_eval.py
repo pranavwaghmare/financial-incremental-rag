@@ -74,6 +74,28 @@ def test_content_addressable_incremental_diff_ignores_index_shift(tmp_path):
     assert stored_ids == expected_ids
 
 
+def test_duplicate_chunk_content_gets_unique_stable_ids(tmp_path):
+    """Repeated identical chunks must not collide in the manifest or vector store."""
+    from app.services.document_service import DocumentProcessingService
+
+    report = tmp_path / "duplicate-report.pdf"
+    create_dummy_pdf(report, "Finance Report", ["Repeated section", "Repeated section"])
+
+    service = DocumentProcessingService(
+        manifest_db_path=str(tmp_path / "manifest.db"),
+        chroma_path=str(tmp_path / "chroma"),
+        chroma_collection_name="test_duplicate_chunk_ids",
+        chunk_size=200,
+        chunk_overlap=0,
+    )
+
+    result = service.process_document(str(report))
+
+    assert result["chunks"] == 2
+    assert service.chroma.collection.count() == 2
+    assert len(set(service.chroma.collection.get()["ids"])) == 2
+
+
 def test_financebench_evidence_page_indexing():
     """Verify that 0-indexed benchmark pages correctly convert to 1-indexed PDF pages."""
     ev = EvidenceItem(

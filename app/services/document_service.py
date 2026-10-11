@@ -56,14 +56,14 @@ class DocumentProcessingService:
         ]
 
         chunks = self.splitter.split_pages(cleaned_pages)
+        hashes = HashingService.generate_hashes([chunk["text"] for chunk in chunks])
+        chunk_ids = HashingService.generate_chunk_ids(filename, hashes)
 
         embedding_calls = 0
-        for chunk in chunks:
+        for chunk, chunk_id in zip(chunks, chunk_ids):
             embedding = self.embedder.embed_text(chunk["text"])
             embedding_calls += 1
 
-            chunk_hash = HashingService.generate_hash(chunk["text"])
-            chunk_id = HashingService.chunk_id(filename, chunk_hash)
             self.chroma.collection.upsert(
                 ids=[chunk_id],
                 documents=[chunk["text"]],
@@ -204,6 +204,7 @@ class DocumentProcessingService:
             texts
 
         )
+        new_chunk_ids = HashingService.generate_chunk_ids(filename, hashes)
 
         new_hashes = {
 
@@ -225,6 +226,8 @@ class DocumentProcessingService:
             filename
 
         )
+        old_hash_list = [old_hashes[index] for index in sorted(old_hashes)]
+        old_chunk_ids = HashingService.generate_chunk_ids(filename, old_hash_list)
 
         # -------------------------
         # Compare
@@ -252,7 +255,17 @@ class DocumentProcessingService:
 
             old_hashes=old_hashes,
 
-            new_hashes=new_hashes
+            new_hashes=new_hashes,
+
+            old_chunk_ids={
+                index: chunk_id
+                for index, chunk_id in zip(sorted(old_hashes), old_chunk_ids)
+            },
+
+            new_chunk_ids={
+                index: chunk_id
+                for index, chunk_id in enumerate(new_chunk_ids)
+            }
 
         )
 
@@ -268,7 +281,7 @@ class DocumentProcessingService:
 
         for i, chunk in enumerate(chunks):
             chunk_hash = hashes[i]
-            chunk_id = HashingService.chunk_id(filename, chunk_hash)
+            chunk_id = new_chunk_ids[i]
 
             self.manifest.add_chunk(
                 document_name=filename,

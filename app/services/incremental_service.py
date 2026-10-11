@@ -23,7 +23,11 @@ class IncrementalService:
 
         old_hashes=None,
 
-        new_hashes=None
+        new_hashes=None,
+
+        old_chunk_ids=None,
+
+        new_chunk_ids=None
 
     ):
 
@@ -52,7 +56,7 @@ class IncrementalService:
             )
 
             chunk_hash = (new_hashes or {}).get(index) or HashingService.generate_hash(chunk["text"])
-            chunk_id = HashingService.chunk_id(filename, chunk_hash)
+            chunk_id = (new_chunk_ids or {}).get(index) or HashingService.chunk_id(filename, chunk_hash)
 
             self.chroma.add_chunk(
 
@@ -89,7 +93,7 @@ class IncrementalService:
             )
 
             chunk_hash = (new_hashes or {}).get(index) or HashingService.generate_hash(chunk["text"])
-            chunk_id = HashingService.chunk_id(filename, chunk_hash)
+            chunk_id = (new_chunk_ids or {}).get(index) or HashingService.chunk_id(filename, chunk_hash)
 
             self.chroma.update_chunk(
 
@@ -120,7 +124,7 @@ class IncrementalService:
             chunk_hash = (old_hashes or {}).get(index)
             if chunk_hash is None:
                 continue
-            chunk_id = HashingService.chunk_id(filename, chunk_hash)
+            chunk_id = (old_chunk_ids or {}).get(index) or HashingService.chunk_id(filename, chunk_hash)
 
             self.chroma.delete_chunk(
 
