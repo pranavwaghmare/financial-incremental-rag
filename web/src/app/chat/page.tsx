@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, BookOpen } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
+const CHAT_STORAGE_KEY = 'findoc-ai-chat-messages';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -22,12 +24,33 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [expandedSources, setExpandedSources] = useState<number | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    const savedMessages = window.localStorage.getItem(CHAT_STORAGE_KEY);
+    if (savedMessages) {
+      try {
+        // Restore browser-only state after hydration.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setMessages(JSON.parse(savedMessages) as Message[]);
+      } catch {
+        window.localStorage.removeItem(CHAT_STORAGE_KEY);
+      }
+    }
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (isHydrated) {
+      window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    }
+  }, [messages, isHydrated]);
 
   useEffect(() => {
     scrollToBottom();
