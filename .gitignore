@@ -157,6 +157,16 @@ ENV/
 env.bak/
 venv.bak/
 
+# Local runtime data and vector stores
+analytics_db/
+manifest_db/
+chroma_storage/
+documents/
+benchmark_runs/
+data/
+*.sqlite3
+*.db
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -216,3 +226,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+*.db
+*.sqlite
+*.pdf
+.idea
+*.bin
+*.db-shm
+*.db-wal

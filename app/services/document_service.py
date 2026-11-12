@@ -17,25 +17,137 @@ from app.utils.splitter import FinancialTextSplitter
 
 class DocumentProcessingService:
 
-    def __init__(self):
+    def __init__(
+        self,
+        manifest_db_path: str = "manifest_db/manifest.db",
+        chroma_path: str = "chroma_storage",
+        chroma_collection_name: str = "financial_documents",
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200,
+    ):
 
         self.loader = PDFLoader()
 
         self.cleaner = TextCleaner()
 
-        self.splitter = FinancialTextSplitter()
+        self.splitter = FinancialTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
         self.embedder = EmbeddingService()
 
-        self.chroma = ChromaDBClient()
+        self.chroma = ChromaDBClient(path=chroma_path, collection_name=chroma_collection_name)
 
-        self.sqlite = ManifestDB()
+        self.sqlite = ManifestDB(db_path=manifest_db_path)
 
-        self.manifest = ManifestService()
+        self.manifest = ManifestService(db_path=manifest_db_path)
 
-        self.incremental = IncrementalService()
+        self.incremental = IncrementalService(chroma_client=self.chroma)
 
         self.analytics = AnalyticsService()
+
+    def process_document_full_rebuild(self, file_path):
+        start_time = time.perf_counter()
+        filename = Path(file_path).name
+
+        pages = self.loader.extract_text(file_path)
+
+        cleaned_pages = [
+            {"page": page["page"], "text": self.cleaner.clean(page["text"])}
+            for page in pages
+        ]
+
+        chunks = self.splitter.split_pages(cleaned_pages)
+        hashes = HashingService.generate_hashes([chunk["text"] for chunk in chunks])
+        chunk_ids = HashingService.generate_chunk_ids(filename, hashes)
+
+        embedding_calls = 0
+        for chunk, chunk_id in zip(chunks, chunk_ids):
+            embedding = self.embedder.embed_text(chunk["text"])
+            embedding_calls += 1
+
+            self.chroma.collection.upsert(
+                ids=[chunk_id],
+                documents=[chunk["text"]],
+                embeddings=[embedding],
+                metadatas=[{
+                    "document_name": filename,
+                    "page": chunk["page"],
+                    "chunk_number": chunk["chunk_number"],
+                }],
+            )
+
+        end_time = time.perf_counter()
+        processing_time = round(end_time - start_time, 3)
+
+        return {
+            "filename": filename,
+            "chunks": len(chunks),
+            "embedding_calls": embedding_calls,
+            "processing_time_seconds": processing_time,
+            "mode": "full_rebuild",
+        }
+
+    def benchmark_against_full_rebuild(self, version_1_path, version_2_path, temp_root=None, chunk_size=1000, chunk_overlap=200):
+        from tempfile import TemporaryDirectory
+        import shutil
+
+        if temp_root is not None:
+            temp_dir = Path(temp_root)
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            temp_root_obj = temp_dir
+        else:
+            temp_root_obj = Path(TemporaryDirectory(prefix="financial_rag_benchmark_").name)
+            temp_root_obj.mkdir(parents=True, exist_ok=True)
+
+        v1_copy = temp_root_obj / "v1.pdf"
+        v2_copy = temp_root_obj / "v2.pdf"
+        shutil.copy2(version_1_path, v1_copy)
+        shutil.copy2(version_2_path, v2_copy)
+
+        inc_path = temp_root_obj / "incremental"
+        full_path = temp_root_obj / "full_rebuild"
+        inc_path.mkdir(exist_ok=True)
+        full_path.mkdir(exist_ok=True)
+
+        incremental_service = DocumentProcessingService(
+            manifest_db_path=str(inc_path / "manifest.db"),
+            chroma_path=str(inc_path / "chroma"),
+            chroma_collection_name="incremental_benchmark",
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
+        )
+
+        full_service = DocumentProcessingService(
+            manifest_db_path=str(full_path / "manifest.db"),
+            chroma_path=str(full_path / "chroma"),
+            chroma_collection_name="full_rebuild_benchmark",
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
+        )
+
+        incremental_service.process_document(str(v1_copy))
+        incremental_result = incremental_service.process_document(str(v2_copy))
+        full_result = full_service.process_document_full_rebuild(str(v2_copy))
+
+        result = {
+            "incremental": incremental_result,
+            "full_rebuild": full_result,
+            "comparison": {
+                "incremental_embedding_calls": incremental_result.get("embedding_calls", 0),
+                "full_rebuild_embedding_calls": full_result.get("embedding_calls", 0),
+                "incremental_less_than_full": incremental_result.get("embedding_calls", 0) < full_result.get("embedding_calls", 0),
+            },
+            "storage": {
+                "incremental_manifest": str(inc_path / "manifest.db"),
+                "incremental_chroma": str(inc_path / "chroma"),
+                "full_manifest": str(full_path / "manifest.db"),
+                "full_chroma": str(full_path / "chroma"),
+            },
+        }
+
+        if temp_root is None:
+            shutil.rmtree(temp_root_obj, ignore_errors=True)
+
+        return result
 
     def process_document(self, file_path):
         start_time = time.perf_counter()
@@ -92,6 +204,7 @@ class DocumentProcessingService:
             texts
 
         )
+        new_chunk_ids = HashingService.generate_chunk_ids(filename, hashes)
 
         new_hashes = {
 
@@ -101,6 +214,9 @@ class DocumentProcessingService:
 
         }
 
+        # The manifest stores chunk hashes keyed by their chunk index, but the
+        # diff must be content-addressable: a chunk is unchanged if its hash value
+        # exists anywhere in the previous version, regardless of index placement.
         # -------------------------
         # Read Manifest
         # -------------------------
@@ -110,6 +226,8 @@ class DocumentProcessingService:
             filename
 
         )
+        old_hash_list = [old_hashes[index] for index in sorted(old_hashes)]
+        old_chunk_ids = HashingService.generate_chunk_ids(filename, old_hash_list)
 
         # -------------------------
         # Compare
@@ -133,7 +251,21 @@ class DocumentProcessingService:
 
             chunks,
 
-            filename
+            filename,
+
+            old_hashes=old_hashes,
+
+            new_hashes=new_hashes,
+
+            old_chunk_ids={
+                index: chunk_id
+                for index, chunk_id in zip(sorted(old_hashes), old_chunk_ids)
+            },
+
+            new_chunk_ids={
+                index: chunk_id
+                for index, chunk_id in enumerate(new_chunk_ids)
+            }
 
         )
 
@@ -143,54 +275,22 @@ class DocumentProcessingService:
 
         document_id = filename
 
+        # Reset the manifest for this document so index positions reflect the
+        # current document layout, while diffing itself remains content-addressable.
+        self.manifest.delete_document(filename)
+
         for i, chunk in enumerate(chunks):
+            chunk_hash = hashes[i]
+            chunk_id = new_chunk_ids[i]
 
-            chunk_id = f"{filename}_{chunk['chunk_number']}"
-
-            if i in changes["new"]:
-
-                self.manifest.add_chunk(
-
-                    document_name=filename,
-
-                    document_id=document_id,
-
-                    chunk_id=chunk_id,
-
-                    chunk_index=i,
-
-                    page=chunk["page"],
-
-                    chunk_hash=hashes[i],
-
-                    embedding_id=chunk_id
-
-                )
-
-            elif i in changes["modified"]:
-
-                self.manifest.update_chunk(
-
-                    chunk_id,
-
-                    hashes[i],
-
-                    chunk_id
-
-                )
-
-        # -------------------------
-        # Remove Deleted
-        # -------------------------
-
-        for index in changes["deleted"]:
-
-            chunk_id = f"{filename}_{index+1}"
-
-            self.manifest.delete_chunk(
-
-                chunk_id
-
+            self.manifest.add_chunk(
+                document_name=filename,
+                document_id=document_id,
+                chunk_id=chunk_id,
+                chunk_index=i,
+                page=chunk["page"],
+                chunk_hash=chunk_hash,
+                embedding_id=chunk_id,
             )
 
         # -------------------------

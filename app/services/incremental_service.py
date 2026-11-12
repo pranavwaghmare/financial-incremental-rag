@@ -1,12 +1,13 @@
 from app.database.chroma_db import ChromaDBClient
 from app.services.embedding_service import EmbeddingService
+from app.services.hashing_service import HashingService
 
 
 class IncrementalService:
 
-    def __init__(self):
+    def __init__(self, chroma_client=None):
 
-        self.chroma = ChromaDBClient()
+        self.chroma = chroma_client or ChromaDBClient()
 
         self.embedder = EmbeddingService()
 
@@ -18,7 +19,15 @@ class IncrementalService:
 
         chunks,
 
-        filename
+        filename,
+
+        old_hashes=None,
+
+        new_hashes=None,
+
+        old_chunk_ids=None,
+
+        new_chunk_ids=None
 
     ):
 
@@ -46,7 +55,8 @@ class IncrementalService:
 
             )
 
-            chunk_id = f"{filename}_{chunk['chunk_number']}"
+            chunk_hash = (new_hashes or {}).get(index) or HashingService.generate_hash(chunk["text"])
+            chunk_id = (new_chunk_ids or {}).get(index) or HashingService.chunk_id(filename, chunk_hash)
 
             self.chroma.add_chunk(
 
@@ -82,7 +92,8 @@ class IncrementalService:
 
             )
 
-            chunk_id = f"{filename}_{chunk['chunk_number']}"
+            chunk_hash = (new_hashes or {}).get(index) or HashingService.generate_hash(chunk["text"])
+            chunk_id = (new_chunk_ids or {}).get(index) or HashingService.chunk_id(filename, chunk_hash)
 
             self.chroma.update_chunk(
 
@@ -110,7 +121,10 @@ class IncrementalService:
 
         for index in changes["deleted"]:
 
-            chunk_id = f"{filename}_{index+1}"
+            chunk_hash = (old_hashes or {}).get(index)
+            if chunk_hash is None:
+                continue
+            chunk_id = (old_chunk_ids or {}).get(index) or HashingService.chunk_id(filename, chunk_hash)
 
             self.chroma.delete_chunk(
 

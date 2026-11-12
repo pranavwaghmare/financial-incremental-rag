@@ -1,6 +1,8 @@
 from pathlib import Path
 import chromadb
 
+from app.services.hashing_service import HashingService
+
 CHROMA_PATH = "chroma_storage"
 COLLECTION_NAME = "financial_documents"
 
@@ -8,17 +10,17 @@ _client = None
 _collection = None
 
 
-def initialize_chromadb():
+def initialize_chromadb(chroma_path: str = CHROMA_PATH, collection_name: str = COLLECTION_NAME):
     global _client, _collection
 
-    Path(CHROMA_PATH).mkdir(parents=True, exist_ok=True)
+    Path(chroma_path).mkdir(parents=True, exist_ok=True)
 
-    if _client is None:
-        _client = chromadb.PersistentClient(path=CHROMA_PATH)
+    if _client is None or getattr(_client, "_path", None) != chroma_path or getattr(_collection, "name", None) != collection_name:
+        _client = chromadb.PersistentClient(path=chroma_path)
         _collection = _client.get_or_create_collection(
-            name=COLLECTION_NAME
+            name=collection_name
         )
-        print("ChromaDB Initialized")
+        print(f"ChromaDB Initialized at {chroma_path} ({collection_name})")
 
 
 def get_collection():
@@ -32,8 +34,11 @@ def get_collection():
 
 class ChromaDBClient:
 
-    def __init__(self):
-        self.collection = get_collection()
+    def __init__(self, path: str = CHROMA_PATH, collection_name: str = COLLECTION_NAME):
+        self.path = path
+        self.collection_name = collection_name
+        self.client = chromadb.PersistentClient(path=self.path)
+        self.collection = self.client.get_or_create_collection(name=self.collection_name)
 
     # -----------------------------
     # Bulk insert (Milestone 2)
@@ -43,10 +48,10 @@ class ChromaDBClient:
         ids = []
         documents = []
         metadatas = []
+        hashes = HashingService.generate_hashes([chunk["text"] for chunk in chunks])
+        chunk_ids = HashingService.generate_chunk_ids(document_name, hashes)
 
-        for chunk in chunks:
-
-            chunk_id = f"{document_name}_{chunk['chunk_number']}"
+        for chunk, chunk_id in zip(chunks, chunk_ids):
 
             ids.append(chunk_id)
             documents.append(chunk["text"])
@@ -77,7 +82,7 @@ class ChromaDBClient:
         metadata
     ):
 
-        self.collection.add(
+        self.collection.upsert(
             ids=[chunk_id],
             documents=[text],
             embeddings=[embedding],

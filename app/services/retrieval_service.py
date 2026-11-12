@@ -4,12 +4,19 @@ from app.services.embedding_service import EmbeddingService
 
 class RetrievalService:
 
-    def __init__(self):
+    def __init__(self, chroma_client=None, collection=None):
         self.embedder = EmbeddingService()
+        self.chroma_client = chroma_client
+        self.custom_collection = collection
         self.get_collection = get_collection
 
     def retrieve(self, question: str, top_k: int = 5) -> list[dict]:
-        collection = self.get_collection()
+        if self.custom_collection is not None:
+            collection = self.custom_collection
+        elif self.chroma_client is not None:
+            collection = self.chroma_client.collection
+        else:
+            collection = self.get_collection()
 
         # Handle empty collection safely
         if collection.count() == 0:

@@ -3,9 +3,9 @@ from app.database.sqlite_db import ManifestDB
 
 class ManifestService:
 
-    def __init__(self):
+    def __init__(self, db_path: str = "manifest_db/manifest.db"):
 
-        self.db = ManifestDB()
+        self.db = ManifestDB(db_path=db_path)
 
         self.connection = self.db.conn
 
@@ -128,6 +128,13 @@ class ManifestService:
             for row in rows
 
         }
+
+    def delete_document(self, document_name):
+        self.cursor.execute(
+            "DELETE FROM manifest WHERE document_name=?",
+            (document_name,),
+        )
+        self.connection.commit()
 
     def delete_chunk(self, chunk_id):
 

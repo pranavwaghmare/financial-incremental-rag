@@ -8,7 +8,21 @@ class ManifestDB:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self.db_path = db_path
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self.conn.execute("PRAGMA journal_mode=WAL;")
         self.create_tables()
+
+    def close(self):
+        if hasattr(self, "conn"):
+            try:
+                self.conn.close()
+            except Exception:
+                pass
+
+    def reset(self):
+        cursor = self.get_cursor()
+        cursor.execute("DELETE FROM manifest")
+        cursor.execute("DELETE FROM documents")
+        self.conn.commit()
 
     def get_cursor(self):
         """Helper to return a fresh cursor per thread operation."""

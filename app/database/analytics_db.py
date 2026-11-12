@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 from pathlib import Path
 
 
@@ -7,15 +8,38 @@ class AnalyticsDB:
     def __init__(self):
 
         Path("analytics_db").mkdir(exist_ok=True)
-
-        self.conn = sqlite3.connect(
-            "analytics_db/analytics.db",
-            check_same_thread=False
-        )
-
-        self.cursor = self.conn.cursor()
+        self.local = threading.local()
+        self.conn.execute("PRAGMA journal_mode=WAL;")
 
         self.create_tables()
+
+    def reset(self):
+        try:
+            self.conn.execute("DELETE FROM upload_metrics")
+            self.conn.execute("DELETE FROM query_metrics")
+            self.conn.commit()
+        except Exception:
+            self.conn.execute("DROP TABLE IF EXISTS upload_metrics")
+            self.conn.execute("DROP TABLE IF EXISTS query_metrics")
+            self.conn.commit()
+            self.create_tables()
+
+    def close(self):
+        if hasattr(self.local, "conn"):
+            try:
+                self.local.conn.close()
+            except Exception:
+                pass
+
+    @property
+    def conn(self):
+        if not hasattr(self.local, "conn"):
+            self.local.conn = sqlite3.connect(
+                "analytics_db/analytics.db",
+                check_same_thread=False,
+                timeout=15
+            )
+        return self.local.conn
 
     # ---------------------------------------------------
     # Create Tables
@@ -23,7 +47,7 @@ class AnalyticsDB:
 
     def create_tables(self):
 
-        self.cursor.execute("""
+        self.conn.execute("""
 
         CREATE TABLE IF NOT EXISTS upload_metrics(
 
@@ -61,7 +85,7 @@ class AnalyticsDB:
 
         """)
 
-        self.cursor.execute("""
+        self.conn.execute("""
 
         CREATE TABLE IF NOT EXISTS query_metrics(
 
@@ -119,7 +143,7 @@ class AnalyticsDB:
 
     ):
 
-        self.cursor.execute("""
+        self.conn.execute("""
 
         INSERT INTO upload_metrics(
 
@@ -205,7 +229,7 @@ class AnalyticsDB:
 
     ):
 
-        self.cursor.execute("""
+        self.conn.execute("""
 
         INSERT INTO query_metrics(
 
@@ -243,7 +267,7 @@ class AnalyticsDB:
 
     def get_document_statistics(self):
 
-        self.cursor.execute("""
+        cursor = self.conn.execute("""
 
         SELECT
 
@@ -259,7 +283,7 @@ class AnalyticsDB:
 
         """)
 
-        row = self.cursor.fetchone()
+        row = cursor.fetchone()
 
         return {
 
@@ -277,7 +301,7 @@ class AnalyticsDB:
 
     def get_incremental_statistics(self):
 
-        self.cursor.execute("""
+        cursor = self.conn.execute("""
 
         SELECT
 
@@ -299,7 +323,7 @@ class AnalyticsDB:
 
         """)
 
-        row = self.cursor.fetchone()
+        row = cursor.fetchone()
 
         return {
 
@@ -323,7 +347,7 @@ class AnalyticsDB:
 
     def get_query_statistics(self):
 
-        self.cursor.execute("""
+        cursor = self.conn.execute("""
 
         SELECT
 
@@ -335,7 +359,7 @@ class AnalyticsDB:
 
         """)
 
-        row = self.cursor.fetchone()
+        row = cursor.fetchone()
 
         return {
 

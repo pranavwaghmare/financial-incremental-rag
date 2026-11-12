@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.upload import router as upload_router
 from app.api.chat import router as chat_router
 from app.api.analytics import router as analytics_router
+from app.api.benchmark import router as benchmark_router
 
 # Import database initialization functions
 from app.database.sqlite_db import ManifestDB
@@ -67,3 +68,4 @@ def health():
 app.include_router(upload_router)
 app.include_router(chat_router)
 app.include_router(analytics_router)
+app.include_router(benchmark_router)
